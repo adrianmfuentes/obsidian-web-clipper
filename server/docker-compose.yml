@@ -1,34 +1,29 @@
 version: "3.9"
 
 # ─── Obsidian Web Clipper – Server Stack ──────────────────────────────────────
-# Designed for Oracle Ampere A1 + Portainer + Nginx Proxy Manager.
+# Oracle Ampere A1 + Portainer + Nginx Proxy Manager
 #
-# HOW TO DEPLOY:
-#   1. SSH into your server and clone/upload this project.
-#   2. cd server/
-#   3. cp .env.example .env  (already done if you followed setup)
-#   4. Fill in AUTH_TOKEN and GEMINI_API_KEY in .env
-#   5. docker compose up -d --build
+# PORTAINER DEPLOY:
+#   Paste this file in Stacks → Add Stack → Web editor.
+#   Add AUTH_TOKEN and GEMINI_API_KEY in the "Environment variables" section below.
 #
-# NPM INTEGRATION: In Nginx Proxy Manager, create a Proxy Host:
-#   - Domain Names: clipper.yourdomain.com
-#   - Scheme: http  |  Forward Hostname/IP: 127.0.0.1  |  Port: 8000
-#   - Enable: Block Common Exploits, Force SSL (Let's Encrypt)
+# SSH / CLI DEPLOY:
+#   cd server/ && docker compose up -d --build
+#   (reads AUTH_TOKEN and GEMINI_API_KEY from your .env file automatically)
+#
+# NPM: Proxy Host → Forward to 127.0.0.1:8000, enable Force SSL.
 
 services:
   clipper-server:
     build:
       context: .
       dockerfile: Dockerfile
-      platforms:
-        - linux/arm64    # Oracle Ampere A1 native target
+      # No 'platforms' needed – Docker builds natively for the host (ARM64).
+      # The 'platforms' key requires BuildKit and breaks Portainer stacks.
 
     container_name: obsidian-clipper-server
     restart: unless-stopped
 
-    # Variables are injected by Portainer's "Environment variables" UI.
-    # When using docker compose directly on the server, these are read
-    # automatically from a .env file in the same directory.
     environment:
       AUTH_TOKEN:     ${AUTH_TOKEN}
       GEMINI_API_KEY: ${GEMINI_API_KEY}
@@ -36,13 +31,17 @@ services:
       DATA_DIR:       ${DATA_DIR:-/app/data}
 
     ports:
-      # Bind ONLY to localhost – NPM connects via 127.0.0.1:8000.
-      # This means the port is NOT reachable from the open internet directly.
+      # Bound to localhost only – NPM reaches it via 127.0.0.1:8000.
+      # Not directly reachable from the internet.
       - "127.0.0.1:8000:8000"
 
     volumes:
-      # Named volume keeps the SQLite queue safe across rebuilds
       - clipper_data:/app/data
+
+    # mem_limit / cpus are compose-native and work in Portainer without Swarm mode.
+    # The 'deploy.resources' block requires Swarm and breaks regular stacks.
+    mem_limit: 256m
+    cpus: 0.5
 
     healthcheck:
       test: ["CMD", "python", "-c",
@@ -51,15 +50,6 @@ services:
       timeout:  10s
       retries:  3
       start_period: 20s
-
-    # Conservative limits – friendly to Oracle Free Tier shared resources
-    deploy:
-      resources:
-        limits:
-          cpus:   "0.5"
-          memory: "256M"
-        reservations:
-          memory: "64M"
 
 volumes:
   clipper_data:
