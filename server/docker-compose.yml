@@ -1,0 +1,61 @@
+version: "3.9"
+
+# ─── Obsidian Web Clipper – Server Stack ──────────────────────────────────────
+# Designed for Oracle Ampere A1 + Portainer + Nginx Proxy Manager.
+#
+# HOW TO DEPLOY:
+#   1. SSH into your server and clone/upload this project.
+#   2. cd server/
+#   3. cp .env.example .env  (already done if you followed setup)
+#   4. Fill in AUTH_TOKEN and GEMINI_API_KEY in .env
+#   5. docker compose up -d --build
+#
+# NPM INTEGRATION: In Nginx Proxy Manager, create a Proxy Host:
+#   - Domain Names: clipper.yourdomain.com
+#   - Scheme: http  |  Forward Hostname/IP: 127.0.0.1  |  Port: 8000
+#   - Enable: Block Common Exploits, Force SSL (Let's Encrypt)
+
+services:
+  clipper-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      platforms:
+        - linux/arm64    # Oracle Ampere A1 native target
+
+    container_name: obsidian-clipper-server
+    restart: unless-stopped
+
+    # Load all secrets from the .env file – never hardcode tokens here
+    env_file:
+      - .env
+
+    ports:
+      # Bind ONLY to localhost – NPM connects via 127.0.0.1:8000.
+      # This means the port is NOT reachable from the open internet directly.
+      - "127.0.0.1:8000:8000"
+
+    volumes:
+      # Named volume keeps the SQLite queue safe across rebuilds
+      - clipper_data:/app/data
+
+    healthcheck:
+      test: ["CMD", "python", "-c",
+             "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout:  10s
+      retries:  3
+      start_period: 20s
+
+    # Conservative limits – friendly to Oracle Free Tier shared resources
+    deploy:
+      resources:
+        limits:
+          cpus:   "0.5"
+          memory: "256M"
+        reservations:
+          memory: "64M"
+
+volumes:
+  clipper_data:
+    driver: local

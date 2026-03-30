@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Obsidian Web Clipper</title>
+  <style>
+    /* ─── Reset & Base ─────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      width: 320px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size: 14px;
+      background: #1e1e2e;
+      color: #cdd6f4;
+    }
+
+    /* ─── Header ────────────────────────────────────────────────────── */
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 16px;
+      background: #181825;
+      border-bottom: 1px solid #313244;
+    }
+    .header h1 {
+      font-size: 15px;
+      font-weight: 600;
+      color: #cba6f7;
+      letter-spacing: 0.3px;
+    }
+    .header h1 span { color: #89b4fa; }
+
+    .btn-icon {
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: #6c7086;
+      padding: 4px;
+      border-radius: 4px;
+      transition: color 0.15s;
+      font-size: 16px;
+    }
+    .btn-icon:hover { color: #cdd6f4; }
+
+    /* ─── Views ─────────────────────────────────────────────────────── */
+    .view { padding: 16px; display: none; }
+    .view.active { display: block; }
+
+    /* ─── Main View ─────────────────────────────────────────────────── */
+    .page-info {
+      background: #181825;
+      border: 1px solid #313244;
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 14px;
+    }
+    .page-info .page-title {
+      font-weight: 600;
+      color: #cdd6f4;
+      margin-bottom: 4px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .page-info .page-url {
+      font-size: 11px;
+      color: #6c7086;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* ─── Status Banner ──────────────────────────────────────────────── */
+    .status {
+      display: none;
+      border-radius: 6px;
+      padding: 9px 12px;
+      font-size: 13px;
+      margin-bottom: 14px;
+      line-height: 1.4;
+    }
+    .status.show { display: block; }
+    .status.info    { background: #1e3a5f; color: #89b4fa; }
+    .status.success { background: #1c3a2a; color: #a6e3a1; }
+    .status.error   { background: #3a1c1c; color: #f38ba8; }
+    .status.warning { background: #3a2e1c; color: #fab387; }
+
+    /* ─── Buttons ────────────────────────────────────────────────────── */
+    .btn {
+      display: block;
+      width: 100%;
+      padding: 10px;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.15s, transform 0.1s;
+    }
+    .btn:active { transform: scale(0.98); }
+    .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #cba6f7, #89b4fa);
+      color: #1e1e2e;
+    }
+    .btn-primary:hover:not(:disabled) { opacity: 0.9; }
+
+    .btn-secondary {
+      background: #313244;
+      color: #cdd6f4;
+      margin-top: 8px;
+    }
+    .btn-secondary:hover:not(:disabled) { background: #45475a; }
+
+    /* ─── Settings View ──────────────────────────────────────────────── */
+    .settings-form label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      color: #a6adc8;
+      margin-bottom: 5px;
+      margin-top: 14px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .settings-form label:first-child { margin-top: 0; }
+
+    .settings-form input {
+      display: block;
+      width: 100%;
+      padding: 8px 10px;
+      background: #181825;
+      border: 1px solid #313244;
+      border-radius: 6px;
+      color: #cdd6f4;
+      font-size: 13px;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    .settings-form input:focus { border-color: #cba6f7; }
+    .settings-form input::placeholder { color: #45475a; }
+
+    .hint {
+      font-size: 11px;
+      color: #6c7086;
+      margin-top: 4px;
+    }
+
+    .settings-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 18px;
+    }
+    .settings-actions .btn { margin-top: 0; }
+  </style>
+</head>
+<body>
+
+  <!-- ─── Header ──────────────────────────────────────────────────── -->
+  <div class="header">
+    <h1>Obsidian <span>Clipper</span></h1>
+    <button class="btn-icon" id="btn-toggle-view" title="Settings">⚙</button>
+  </div>
+
+  <!-- ─── Main View ───────────────────────────────────────────────── -->
+  <div class="view active" id="view-main">
+    <div class="page-info">
+      <div class="page-title" id="page-title">Loading…</div>
+      <div class="page-url"   id="page-url"></div>
+    </div>
+
+    <div class="status" id="status-main"></div>
+
+    <button class="btn btn-primary" id="btn-clip">
+      ✦ Clip this Article
+    </button>
+    <button class="btn btn-secondary" id="btn-open-settings-from-main" style="display:none">
+      Configure Server URL first →
+    </button>
+  </div>
+
+  <!-- ─── Settings View ───────────────────────────────────────────── -->
+  <div class="view" id="view-settings">
+    <div class="status" id="status-settings"></div>
+
+    <div class="settings-form">
+      <label for="input-server-url">Server URL</label>
+      <input type="url" id="input-server-url"
+             placeholder="https://your-oracle-server.com:8000" />
+      <p class="hint">The base URL of your Oracle FastAPI server.</p>
+
+      <label for="input-token">Security Token</label>
+      <input type="password" id="input-token"
+             placeholder="your-secret-token" />
+      <p class="hint">Must match <code>AUTH_TOKEN</code> on the server.</p>
+    </div>
+
+    <div class="settings-actions">
+      <button class="btn btn-primary" id="btn-save-settings">Save</button>
+      <button class="btn btn-secondary" id="btn-cancel-settings">Cancel</button>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

@@ -1,0 +1,41 @@
+"""
+database.py
+Sets up and provides access to the SQLite queue database.
+
+The 'notes' table stores processed Markdown notes waiting to be
+pulled down by the local Obsidian client.
+"""
+
+import sqlite3
+import os
+from pathlib import Path
+
+# Data directory – bind-mounted as a Docker volume so notes survive restarts
+DATA_DIR = Path(os.getenv("DATA_DIR", "/app/data"))
+DATA_DIR.mkdir(parents=True, exist_ok=True)
+
+DB_PATH = DATA_DIR / "queue.db"
+
+
+def get_connection() -> sqlite3.Connection:
+    """Return a thread-safe SQLite connection with row_factory set."""
+    conn = sqlite3.connect(str(DB_PATH), check_same_thread=False)
+    conn.row_factory = sqlite3.Row          # rows accessible as dicts
+    conn.execute("PRAGMA journal_mode=WAL") # safe for concurrent reads
+    return conn
+
+
+def init_db() -> None:
+    """Create the notes table if it doesn't exist yet."""
+    with get_connection() as conn:
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS notes (
+                id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                title       TEXT    NOT NULL,
+                url         TEXT    NOT NULL,
+                markdown    TEXT    NOT NULL,   -- Gemini output
+                created_at  TEXT    NOT NULL DEFAULT (datetime('now')),
+                filename    TEXT    NOT NULL    -- suggested .md filename
+            )
+        """)
+        conn.commit()

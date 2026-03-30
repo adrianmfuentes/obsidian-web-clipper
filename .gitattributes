@@ -1,0 +1,20 @@
+# Force Unix line endings for all files that run on the Linux server.
+# This prevents Docker build failures caused by CRLF in shell scripts / Python.
+
+* text=auto
+
+# Server files – always LF (runs on Linux/ARM64)
+server/*.py     text eol=lf
+server/Dockerfile text eol=lf
+server/docker-compose.yml text eol=lf
+server/requirements.txt   text eol=lf
+server/.env.example       text eol=lf
+
+# Extension and client files – LF is fine everywhere
+chrome-extension/*.js   text eol=lf
+chrome-extension/*.html text eol=lf
+chrome-extension/*.json text eol=lf
+local-client/*.py       text eol=lf
+
+# PowerShell is Windows-only, CRLF is natural there
+local-client/*.ps1 text eol=crlf
