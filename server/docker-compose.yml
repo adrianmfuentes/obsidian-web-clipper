@@ -26,9 +26,14 @@ services:
     container_name: obsidian-clipper-server
     restart: unless-stopped
 
-    # Load all secrets from the .env file – never hardcode tokens here
-    env_file:
-      - .env
+    # Variables are injected by Portainer's "Environment variables" UI.
+    # When using docker compose directly on the server, these are read
+    # automatically from a .env file in the same directory.
+    environment:
+      AUTH_TOKEN:     ${AUTH_TOKEN}
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+      GEMINI_MODEL:   ${GEMINI_MODEL:-gemini-1.5-flash}
+      DATA_DIR:       ${DATA_DIR:-/app/data}
 
     ports:
       # Bind ONLY to localhost – NPM connects via 127.0.0.1:8000.
