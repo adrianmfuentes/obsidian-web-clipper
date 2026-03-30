@@ -35,22 +35,10 @@ except ImportError:
 # Edit these values OR set the matching environment variables.
 
 CONFIG = {
-    # Base URL of your Oracle FastAPI server (no trailing slash)
-    "server_url": os.getenv("CLIPPER_SERVER_URL", "https://YOUR_ORACLE_SERVER:8000"),
-
-    # Must match AUTH_TOKEN in docker-compose.yml
-    "auth_token": os.getenv("CLIPPER_AUTH_TOKEN", "CHANGE_ME_TO_A_LONG_RANDOM_STRING"),
-
-    # Absolute path to your Obsidian Inbox folder
-    # Windows example: C:/Users/YourName/Documents/MyVault/Inbox
-    # macOS  example:  /Users/YourName/Documents/MyVault/Inbox
-    "inbox_path": os.getenv(
-        "CLIPPER_INBOX_PATH",
-        r"C:\Users\YOUR_USERNAME\Documents\ObsidianVault\Inbox"
-    ),
-
-    # How long to wait for the server before giving up (seconds)
-    "request_timeout": int(os.getenv("CLIPPER_TIMEOUT", "30")),
+    "server_url": "https://clipper.amfserver.duckdns.org",
+    "auth_token":  "your_AUTH_TOKEN_here",
+    "inbox_path":  r"D:\\34644\\Documents\\Clipper\\Inbox",
+    "request_timeout": 30
 }
 
 # ─── Logging ───────────────────────────────────────────────────────────────────

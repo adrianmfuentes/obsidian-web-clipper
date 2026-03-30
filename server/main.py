@@ -24,7 +24,7 @@ from database import get_connection, init_db
 # ─── Configuration (set via environment variables in docker-compose) ───────────
 AUTH_TOKEN   = os.environ["AUTH_TOKEN"]          # Required – no default
 GEMINI_API_KEY = os.environ["GEMINI_API_KEY"]    # Required – no default
-GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-1.5-flash")
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
 GEMINI_URL   = (
     f"https://generativelanguage.googleapis.com/v1beta/models/"
     f"{GEMINI_MODEL}:generateContent?key={GEMINI_API_KEY}"
