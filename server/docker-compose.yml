@@ -15,11 +15,13 @@ version: "3.9"
 
 services:
   clipper-server:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      # No 'platforms' needed – Docker builds natively for the host (ARM64).
-      # The 'platforms' key requires BuildKit and breaks Portainer stacks.
+    # Image must be built on the server before deploying via Portainer:
+    #   cd /opt/obsidian-clipper/server
+    #   docker build -t obsidian-clipper-server:latest .
+    #
+    # To rebuild after code changes, re-run the command above,
+    # then redeploy the stack in Portainer (it will use the new image).
+    image: obsidian-clipper-server:latest
 
     container_name: obsidian-clipper-server
     restart: unless-stopped
