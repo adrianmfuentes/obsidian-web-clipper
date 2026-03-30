@@ -34,3 +34,5 @@ desktop.ini
 .idea/
 *.swp
 *.swo
+
+remove*.txt
