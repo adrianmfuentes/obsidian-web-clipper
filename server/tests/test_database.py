@@ -36,8 +36,8 @@ def test_connection_closed_even_on_error():
 def test_notes_roundtrip():
     with database.get_connection() as conn:
         conn.execute(
-            "INSERT INTO notes (title, url, markdown, filename) VALUES (?, ?, ?, ?)",
-            ("Title", "https://example.com", "# md", "file.md"),
+            "INSERT INTO notes (title, url, markdown, filename, content_hash) VALUES (?, ?, ?, ?, ?)",
+            ("Title", "https://example.com", "# md", "file.md", "hash-1"),
         )
         conn.commit()
 
@@ -46,3 +46,18 @@ def test_notes_roundtrip():
 
     assert len(rows) == 1
     assert rows[0]["title"] == "Title"
+
+
+def test_content_hash_is_unique():
+    with database.get_connection() as conn:
+        conn.execute(
+            "INSERT INTO notes (title, url, markdown, filename, content_hash) VALUES (?, ?, ?, ?, ?)",
+            ("Title", "https://example.com", "# md", "file.md", "dupe-hash"),
+        )
+        conn.commit()
+
+        with pytest.raises(sqlite3.IntegrityError):
+            conn.execute(
+                "INSERT INTO notes (title, url, markdown, filename, content_hash) VALUES (?, ?, ?, ?, ?)",
+                ("Other Title", "https://example.com/2", "# md2", "file2.md", "dupe-hash"),
+            )

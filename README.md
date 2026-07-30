@@ -104,10 +104,28 @@ curl http://localhost:8000/health
    - **Security Token**: the same `AUTH_TOKEN` from your `.env`
 5. Click **Save**.
 
-> **Icons**: The `icons/` folder is referenced in `manifest.json` but no PNG files are
-> included here. Drop any 16×16, 48×48, and 128×128 PNG images named `icon16.png`,
-> `icon48.png`, `icon128.png` into `chrome-extension/icons/`. You can use any simple
-> icon or generate one at [favicon.io](https://favicon.io).
+> Placeholder icons ship in `chrome-extension/icons/` so **Load unpacked** works
+> out of the box. Swap `icon16.png` / `icon48.png` / `icon128.png` for your own
+> artwork any time — just keep the same filenames and pixel sizes.
+
+---
+
+#### Optional: publish to the Chrome Web Store
+
+By default, tagging a release (`git tag v1.2.3 && git push --tags`) only creates
+a GitHub Release with a zip (see [CI/CD](#cicd)) — installing still means
+**Load unpacked**. To have `extension-release.yml` also push straight to the
+Chrome Web Store on every tag, set these in the repo's Settings:
+
+- **Settings → Secrets and variables → Actions → Variables**: `CHROME_EXTENSION_ID`
+- **Settings → Secrets and variables → Actions → Secrets**: `CHROME_CLIENT_ID`,
+  `CHROME_CLIENT_SECRET`, `CHROME_REFRESH_TOKEN` (from a Google Cloud OAuth client
+  with access to the Chrome Web Store API — see
+  [chrome-extension-upload](https://github.com/mnao305/chrome-extension-upload)
+  for how to generate them)
+
+Leave `CHROME_EXTENSION_ID` unset and the publish step is skipped automatically —
+the GitHub Release zip still gets created either way.
 
 ---
 
@@ -133,11 +151,27 @@ pip install requests
 python pull_notes.py
 ```
 
+A note is only removed from the server's queue once it's been written to
+disk successfully (`/pull-notes` -> write -> `/ack-notes`), so a crash
+mid-run just means it gets fetched again next time — nothing is lost.
+
 ---
 
-### 5 · Schedule the Local Client (Windows)
+### 5 · Get notes into your vault: scheduled pulls or watch mode
 
-**Windows Task Scheduler:**
+Two ways to run the local client — pick one:
+
+**Option A — Scheduled one-shot pulls** (`pull_notes.py` / `pull_notes.ps1`
+with no arguments): runs once, exits. Good for Task Scheduler / cron on a
+fixed interval — new clips show up within that interval.
+
+**Option B — Watch mode** (`python pull_notes.py --watch` or
+`pull_notes.ps1 -Watch`): a single long-running process that long-polls the
+server, so new clips land in your Inbox within seconds instead of waiting for
+the next scheduled run. Run it once (e.g. at login, or as a background
+service) instead of scheduling repeated pulls.
+
+**Windows Task Scheduler (one-shot):**
 
 1. Open **Task Scheduler** → **Create Basic Task**
 2. Name: `Obsidian Web Clipper Pull`
@@ -148,7 +182,8 @@ python pull_notes.py
    - Start in: `C:\path\to\local-client\`
 5. Finish.
 
-Or import via PowerShell (run as Administrator):
+Or import via PowerShell (run as Administrator) — `schedule_task.ps1` in this
+folder does exactly this:
 ```powershell
 $action  = New-ScheduledTaskAction -Execute "python" -Argument "C:\path\to\pull_notes.py"
 $trigger = @(
@@ -158,20 +193,33 @@ $trigger = @(
 Register-ScheduledTask -TaskName "Obsidian Clipper Pull" -Action $action -Trigger $trigger -RunLevel Highest
 ```
 
-**macOS / Linux cron:**
+**macOS / Linux cron (one-shot):**
 ```cron
 */30 * * * * /usr/bin/python3 /path/to/pull_notes.py >> /tmp/clipper.log 2>&1
 ```
+
+**Watch mode (either platform), instead of the above:**
+```bash
+python pull_notes.py --watch      # foreground; Ctrl+C to stop
+```
+```powershell
+.\pull_notes.ps1 -Watch
+```
+Run it under whatever keeps a process alive on your machine (Task Scheduler
+"At log on" trigger with no repetition, a systemd user service, `screen`/`tmux`,
+pm2, etc.) — the script itself runs forever until stopped.
 
 ---
 
 ## API Reference
 
-| Method | Path          | Auth | Description                                              |
-|--------|---------------|------|----------------------------------------------------------|
-| GET    | `/health`     | No   | Liveness check                                           |
-| POST   | `/capture`    | Yes  | Receive article, call Gemini, queue result               |
-| GET    | `/pull-notes` | Yes  | Return + delete all pending notes (destructive read)     |
+| Method | Path          | Auth | Description                                                             |
+|--------|---------------|------|--------------------------------------------------------------------------|
+| GET    | `/health`     | No   | Liveness check                                                          |
+| POST   | `/capture`    | Yes  | Receive article, call Gemini, queue result. Repeat calls with the same URL+text are deduped — no extra Gemini spend, no duplicate notes. |
+| GET    | `/pull-notes` | Yes  | Return pending notes. **Non-destructive** — call `/ack-notes` once they're safely written to disk. |
+| POST   | `/ack-notes`  | Yes  | Delete previously-pulled notes by id.                                   |
+| GET    | `/wait-notes` | Yes  | Long-poll: returns immediately if notes are already pending, otherwise blocks (up to `?timeout=` seconds, default 25, capped at 55) until a new one is queued. Same response shape as `/pull-notes`. |
 
 **Auth header:** `X-Auth-Token: <your-token>`
 
@@ -183,8 +231,10 @@ Register-ScheduledTask -TaskName "Obsidian Clipper Pull" -Action $action -Trigge
   "text":  "Full cleaned article text…"
 }
 ```
+Response is `{"status": "queued", "filename": "..."}` or, for a repeat of an
+already-queued capture, `{"status": "duplicate", "filename": "..."}`.
 
-**GET /pull-notes response:**
+**GET /pull-notes (and /wait-notes) response:**
 ```json
 {
   "count": 2,
@@ -201,6 +251,12 @@ Register-ScheduledTask -TaskName "Obsidian Clipper Pull" -Action $action -Trigge
 }
 ```
 
+**POST /ack-notes body:**
+```json
+{ "ids": [1, 2] }
+```
+Response: `{"deleted": 2}`.
+
 ---
 
 ## CI/CD
@@ -211,14 +267,14 @@ Three GitHub Actions workflows run automatically:
 |------------------------------|---------------------------------------------|-----------------------------------------------------------------------|
 | `ci.yml`                     | Push / PR to `master`                       | Lints + tests the server (`ruff`, `pytest`), validates the extension's `manifest.json` and JS syntax, and parse-checks the PowerShell scripts. |
 | `docker-publish.yml`         | Push to `master` touching `server/**`, or a `v*` tag | Builds the multi-arch (amd64/arm64) server image and publishes it to `ghcr.io/adrianmfuentes/obsidian-clipper-server`. |
-| `extension-release.yml`      | Push of a `v*` tag                          | Zips `chrome-extension/` and attaches it to a GitHub Release.       |
+| `extension-release.yml`      | Push of a `v*` tag                          | Fails fast if `manifest.json`'s version doesn't match the tag, then zips `chrome-extension/` and attaches it to a GitHub Release. Also publishes to the Chrome Web Store if configured (see [above](#optional-publish-to-the-chrome-web-store)). |
 
 `server/tests/` holds the pytest suite (`test_database.py`, `test_main.py`) — run locally with:
 ```bash
 cd server
 pip install -r requirements.txt pytest ruff
 pytest tests -v
-ruff check . --line-length 120
+ruff check . --line-length 120 --select E4,E7,E9,F
 ```
 
 ---

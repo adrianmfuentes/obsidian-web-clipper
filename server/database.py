@@ -43,12 +43,13 @@ def init_db() -> None:
     with get_connection() as conn:
         conn.execute("""
             CREATE TABLE IF NOT EXISTS notes (
-                id          INTEGER PRIMARY KEY AUTOINCREMENT,
-                title       TEXT    NOT NULL,
-                url         TEXT    NOT NULL,
-                markdown    TEXT    NOT NULL,   -- Gemini output
-                created_at  TEXT    NOT NULL DEFAULT (datetime('now')),
-                filename    TEXT    NOT NULL    -- suggested .md filename
+                id            INTEGER PRIMARY KEY AUTOINCREMENT,
+                title         TEXT    NOT NULL,
+                url           TEXT    NOT NULL,
+                markdown      TEXT    NOT NULL,   -- Gemini output
+                created_at    TEXT    NOT NULL DEFAULT (datetime('now')),
+                filename      TEXT    NOT NULL,   -- suggested .md filename
+                content_hash  TEXT    NOT NULL UNIQUE  -- dedupes repeat /capture calls
             )
         """)
         conn.commit()
