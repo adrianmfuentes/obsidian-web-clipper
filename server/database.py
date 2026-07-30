@@ -12,10 +12,13 @@ import os
 from pathlib import Path
 from typing import Iterator
 
-# Data directory – bind-mounted as a Docker volume so notes survive restarts
+# Data directory – bind-mounted as a Docker volume so notes survive restarts.
+# Not created here at import time: merely `import database` shouldn't touch
+# the filesystem (and the default /app/data is only writable inside the
+# Docker image, where the Dockerfile already creates it). init_db() below
+# creates DB_PATH's parent lazily, so tests that monkeypatch DB_PATH to a
+# tmp_path never touch the real default.
 DATA_DIR = Path(os.getenv("DATA_DIR", "/app/data"))
-DATA_DIR.mkdir(parents=True, exist_ok=True)
-
 DB_PATH = DATA_DIR / "queue.db"
 
 
@@ -39,7 +42,8 @@ def get_connection() -> Iterator[sqlite3.Connection]:
 
 
 def init_db() -> None:
-    """Create the notes table if it doesn't exist yet."""
+    """Ensure the data directory exists, then create the notes table if needed."""
+    DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     with get_connection() as conn:
         conn.execute("""
             CREATE TABLE IF NOT EXISTS notes (
