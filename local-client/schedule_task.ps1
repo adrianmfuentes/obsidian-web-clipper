@@ -7,7 +7,10 @@
       - At every user log on
       - Every 30 minutes while the PC is running
 
-    Run once as Administrator. To remove the task, run unschedule_task.ps1.
+    Runs via pythonw.exe (the windowless twin of python.exe), so no console
+    window flashes into the foreground every 30 minutes — pull_notes.py logs
+    to pull_notes.log next to itself instead. Run once as Administrator.
+    To remove the task, run unschedule_task.ps1.
 
 .NOTES
     Run with: powershell -ExecutionPolicy Bypass -File schedule_task.ps1
@@ -24,12 +27,23 @@ if (-not $PythonExe) {
     exit 1
 }
 
-Write-Host "Using Python: $PythonExe" -ForegroundColor Cyan
+# Prefer pythonw.exe (windowless) over python.exe — python.exe is a console
+# app, so Task Scheduler would flash a terminal window into the foreground
+# on every trigger. pythonw.exe ships alongside python.exe in every standard
+# CPython install (same folder), so this should always resolve.
+$PythonwExe = Join-Path (Split-Path $PythonExe -Parent) "pythonw.exe"
+if (-not (Test-Path $PythonwExe)) {
+    Write-Host "WARNING: pythonw.exe not found next to python.exe - falling back to python.exe." -ForegroundColor Yellow
+    Write-Host "         Scheduled runs will briefly show a console window." -ForegroundColor Yellow
+    $PythonwExe = $PythonExe
+}
+
+Write-Host "Using Python: $PythonwExe" -ForegroundColor Cyan
 Write-Host "Script path : $ScriptPath" -ForegroundColor Cyan
 
 # ─── Build task components ─────────────────────────────────────────────────────
 $action = New-ScheduledTaskAction `
-    -Execute  $PythonExe `
+    -Execute  $PythonwExe `
     -Argument "`"$ScriptPath`"" `
     -WorkingDirectory $PSScriptRoot
 
@@ -74,5 +88,6 @@ Write-Host "Task registered successfully!" -ForegroundColor Green
 Write-Host "  Name     : $TaskName" -ForegroundColor White
 Write-Host "  Triggers : At log on  +  every 30 minutes" -ForegroundColor White
 Write-Host "  Script   : $ScriptPath" -ForegroundColor White
+Write-Host "  Runs silently (no console window) - check pull_notes.log next to the script for output." -ForegroundColor White
 Write-Host ""
 Write-Host "To remove it, run: .\unschedule_task.ps1" -ForegroundColor DarkGray

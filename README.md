@@ -177,20 +177,22 @@ service) instead of scheduling repeated pulls.
 2. Name: `Obsidian Web Clipper Pull`
 3. **Trigger**: `When I log on` (add a second trigger: `On a schedule`, repeat every 30 min)
 4. **Action**: `Start a program`
-   - Program: `python`
+   - Program: `pythonw` (not `python` — see note below)
    - Arguments: `"C:\path\to\pull_notes.py"`
    - Start in: `C:\path\to\local-client\`
 5. Finish.
 
-Or import via PowerShell (run as Administrator) — `schedule_task.ps1` in this
-folder does exactly this:
+> **Use `pythonw`, not `python`.** `python.exe` is a console app, so Task
+> Scheduler briefly flashes a terminal window into the foreground every time
+> it fires — every 30 minutes, indefinitely. `pythonw.exe` is the windowless
+> twin of the same interpreter (ships in the same folder) and runs fully in
+> the background. Since there's then no console to print to, `pull_notes.py`
+> always writes to `pull_notes.log` next to itself — check there instead.
+
+Easier: just run `schedule_task.ps1` in this folder (as Administrator) — it
+does exactly the above and auto-detects `pythonw.exe` for you:
 ```powershell
-$action  = New-ScheduledTaskAction -Execute "python" -Argument "C:\path\to\pull_notes.py"
-$trigger = @(
-    New-ScheduledTaskTrigger -AtLogOn,
-    New-ScheduledTaskTrigger -RepetitionInterval (New-TimeSpan -Minutes 30) -Once -At (Get-Date)
-)
-Register-ScheduledTask -TaskName "Obsidian Clipper Pull" -Action $action -Trigger $trigger -RunLevel Highest
+powershell -ExecutionPolicy Bypass -File local-client\schedule_task.ps1
 ```
 
 **macOS / Linux cron (one-shot):**
@@ -207,7 +209,9 @@ python pull_notes.py --watch      # foreground; Ctrl+C to stop
 ```
 Run it under whatever keeps a process alive on your machine (Task Scheduler
 "At log on" trigger with no repetition, a systemd user service, `screen`/`tmux`,
-pm2, etc.) — the script itself runs forever until stopped.
+pm2, etc.) — the script itself runs forever until stopped. On Windows, launch
+it with `pythonw` too (`pythonw pull_notes.py --watch`) so it runs with no
+visible console window at all instead of one sitting open in the background.
 
 ---
 

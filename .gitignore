@@ -22,6 +22,9 @@ env/
 *.sqlite
 *.sqlite3
 
+# ─── Local client run logs ────────────────────────────────────────────────────
+local-client/*.log
+
 # ─── Docker ───────────────────────────────────────────────────────────────────
 # (docker-compose.override.yml may contain local secrets)
 docker-compose.override.yml

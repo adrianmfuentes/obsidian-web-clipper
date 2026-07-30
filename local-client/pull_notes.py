@@ -85,9 +85,14 @@ _log_formatter = logging.Formatter(
     fmt="%(asctime)s  %(levelname)-8s  %(message)s", datefmt="%Y-%m-%d %H:%M:%S"
 )
 
-_console_handler = logging.StreamHandler()
-_console_handler.setFormatter(_log_formatter)
-log.addHandler(_console_handler)
+# sys.stderr is None under pythonw.exe when Task Scheduler launches it with
+# no console attached at all (as opposed to just having it redirected) —
+# skip the console handler entirely in that case rather than relying on
+# logging's internal handleError() fallback to swallow the failed writes.
+if sys.stderr is not None:
+    _console_handler = logging.StreamHandler()
+    _console_handler.setFormatter(_log_formatter)
+    log.addHandler(_console_handler)
 
 try:
     log_path = Path(os.environ.get("CLIPPER_LOG_PATH", CONFIG["log_path"]))
