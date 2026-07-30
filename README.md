@@ -46,6 +46,12 @@ obsidian-web-clipper/
 
 ### 2 · Deploy the Server (Oracle ARM64)
 
+The server image is built and published automatically by
+[`.github/workflows/docker-publish.yml`](.github/workflows/docker-publish.yml)
+to `ghcr.io/adrianmfuentes/obsidian-clipper-server` (multi-arch: amd64 + arm64)
+on every push to `master` that touches `server/**`. No manual build step is
+needed on the Oracle server anymore — just pull.
+
 **Option A – Portainer Stack (recommended)**
 
 1. SSH into your Oracle server, create the data directory:
@@ -56,7 +62,7 @@ obsidian-web-clipper/
 3. Replace the two `CHANGE_ME` values:
    - `AUTH_TOKEN` — generate one: `openssl rand -hex 32`
    - `GEMINI_API_KEY` — from AI Studio
-4. Deploy the stack.
+4. Deploy the stack (Portainer will pull the published image from GHCR).
 
 **Option B – docker-compose directly**
 
@@ -66,6 +72,7 @@ git clone <this-repo> obsidian-clipper
 cd obsidian-clipper/server
 cp .env.example .env
 nano .env              # fill in AUTH_TOKEN and GEMINI_API_KEY
+docker compose pull    # fetch the latest published image
 docker compose up -d
 ```
 
@@ -192,6 +199,26 @@ Register-ScheduledTask -TaskName "Obsidian Clipper Pull" -Action $action -Trigge
     }
   ]
 }
+```
+
+---
+
+## CI/CD
+
+Three GitHub Actions workflows run automatically:
+
+| Workflow                    | Trigger                                    | What it does                                                        |
+|------------------------------|---------------------------------------------|-----------------------------------------------------------------------|
+| `ci.yml`                     | Push / PR to `master`                       | Lints + tests the server (`ruff`, `pytest`), validates the extension's `manifest.json` and JS syntax, and parse-checks the PowerShell scripts. |
+| `docker-publish.yml`         | Push to `master` touching `server/**`, or a `v*` tag | Builds the multi-arch (amd64/arm64) server image and publishes it to `ghcr.io/adrianmfuentes/obsidian-clipper-server`. |
+| `extension-release.yml`      | Push of a `v*` tag                          | Zips `chrome-extension/` and attaches it to a GitHub Release.       |
+
+`server/tests/` holds the pytest suite (`test_database.py`, `test_main.py`) — run locally with:
+```bash
+cd server
+pip install -r requirements.txt pytest ruff
+pytest tests -v
+ruff check . --line-length 120
 ```
 
 ---

@@ -15,13 +15,16 @@ version: "3.9"
 
 services:
   clipper-server:
-    # Image must be built on the server before deploying via Portainer:
+    # Built and published automatically by .github/workflows/docker-publish.yml
+    # on every push to master that touches server/** (multi-arch: amd64 + arm64).
+    # Just `docker compose pull && docker compose up -d` (or redeploy the stack
+    # in Portainer) to pick up a new build — no manual `docker build` needed.
+    #
+    # Local/offline alternative — build on the server yourself:
     #   cd /opt/obsidian-clipper/server
     #   docker build -t obsidian-clipper-server:latest .
-    #
-    # To rebuild after code changes, re-run the command above,
-    # then redeploy the stack in Portainer (it will use the new image).
-    image: obsidian-clipper-server:latest
+    #   (then change the image line below back to obsidian-clipper-server:latest)
+    image: ghcr.io/adrianmfuentes/obsidian-clipper-server:latest
 
     container_name: obsidian-clipper-server
     restart: unless-stopped

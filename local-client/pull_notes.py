@@ -20,7 +20,6 @@ ENVIRONMENT VARIABLE OVERRIDES (optional – useful for CI / dotfiles):
 
 import os
 import sys
-import json
 import logging
 from pathlib import Path
 from datetime import datetime, timezone
@@ -35,9 +34,9 @@ except ImportError:
 # Edit these values OR set the matching environment variables.
 
 CONFIG = {
-    "server_url": "https://clipper.amfserver.duckdns.org",
-    "auth_token":  "your_AUTH_TOKEN_here",
-    "inbox_path":  r"D:\\34644\\Documents\\Clipper\\Inbox",
+    "server_url": "https://YOUR_ORACLE_SERVER",
+    "auth_token":  "CHANGE_ME_TO_A_LONG_RANDOM_STRING",
+    "inbox_path":  r"C:\Users\YOUR_USERNAME\Documents\ObsidianVault\Inbox",
     "request_timeout": 30
 }
 
@@ -87,9 +86,9 @@ def pull_and_save() -> int:
     Fetch all queued notes from the server and write them to the Inbox.
     Returns the number of notes saved.
     """
-    server_url = CONFIG["server_url"].rstrip("/")
-    token      = CONFIG["auth_token"]
-    inbox      = Path(CONFIG["inbox_path"])
+    server_url = os.environ.get("CLIPPER_SERVER_URL", CONFIG["server_url"]).rstrip("/")
+    token      = os.environ.get("CLIPPER_AUTH_TOKEN", CONFIG["auth_token"])
+    inbox      = Path(os.environ.get("CLIPPER_INBOX_PATH", CONFIG["inbox_path"]))
 
     # ── Validate config ──────────────────────────────────────────────────────
     if "YOUR_ORACLE_SERVER" in server_url or "CHANGE_ME" in server_url:

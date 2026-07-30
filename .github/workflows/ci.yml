@@ -1,0 +1,82 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+jobs:
+  server:
+    name: Lint & test server
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: server
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+          cache-dependency-path: server/requirements.txt
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install ruff pytest
+
+      - name: Lint (ruff)
+        run: ruff check . --line-length 120
+
+      - name: Run tests
+        run: pytest tests -v
+
+  extension:
+    name: Validate Chrome extension
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: chrome-extension
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate manifest.json is well-formed
+        run: python -c "import json; json.load(open('manifest.json'))"
+
+      - name: Check JS files parse (syntax check via Node)
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - run: |
+          for f in *.js; do
+            node --check "$f"
+          done
+
+  powershell:
+    name: Validate PowerShell scripts
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: local-client
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Parse-check .ps1 scripts (no execution)
+        shell: pwsh
+        run: |
+          $hadErrors = $false
+          Get-ChildItem -Filter *.ps1 | ForEach-Object {
+            $errors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile($_.FullName, [ref]$null, [ref]$errors) | Out-Null
+            if ($errors.Count -gt 0) {
+              $hadErrors = $true
+              Write-Host "::error file=$($_.Name)::Parse errors found"
+              $errors | ForEach-Object { Write-Host $_.Message }
+            } else {
+              Write-Host "OK: $($_.Name)"
+            }
+          }
+          if ($hadErrors) { exit 1 }

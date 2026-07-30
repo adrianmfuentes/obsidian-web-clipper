@@ -1,0 +1,30 @@
+name: Package Chrome Extension
+
+# Zips chrome-extension/ and attaches it to a GitHub Release whenever a
+# version tag is pushed, so installing the extension doesn't require
+# cloning the whole repo.
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Zip extension
+        run: |
+          cd chrome-extension
+          zip -r ../obsidian-web-clipper-${{ github.ref_name }}.zip . -x '*.DS_Store'
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: obsidian-web-clipper-${{ github.ref_name }}.zip
+          generate_release_notes: true

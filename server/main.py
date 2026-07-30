@@ -10,14 +10,16 @@ Endpoints:
 
 import os
 import re
+import secrets
 import logging
+from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from typing import Annotated
 
 import httpx
 from fastapi import FastAPI, HTTPException, Header, Depends
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, HttpUrl
+from pydantic import BaseModel
 
 from database import get_connection, init_db
 
@@ -34,10 +36,18 @@ GEMINI_URL   = (
 logging.basicConfig(level=logging.INFO, format="%(levelname)s  %(message)s")
 log = logging.getLogger(__name__)
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    init_db()
+    log.info("Database ready at %s", os.getenv("DATA_DIR", "/app/data"))
+    yield
+
+
 app = FastAPI(
     title="Obsidian Web Clipper Queue",
     description="Captures web articles, processes them with Gemini, queues for Obsidian.",
     version="1.0.0",
+    lifespan=lifespan,
 )
 
 # Allow the Chrome extension to reach this server (adjust origin in production)
@@ -48,16 +58,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-@app.on_event("startup")
-def on_startup():
-    init_db()
-    log.info("Database ready at %s", os.getenv("DATA_DIR", "/app/data"))
-
 
 # ─── Auth dependency ───────────────────────────────────────────────────────────
 def verify_token(x_auth_token: Annotated[str | None, Header()] = None):
     """Dependency – raises 401 if the token header is missing or wrong."""
-    if x_auth_token != AUTH_TOKEN:
+    if x_auth_token is None or not secrets.compare_digest(x_auth_token, AUTH_TOKEN):
         raise HTTPException(status_code=401, detail="Invalid or missing X-Auth-Token")
 
 

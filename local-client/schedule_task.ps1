@@ -44,11 +44,14 @@ $triggerRepeat = New-ScheduledTaskTrigger `
     -RepetitionInterval  (New-TimeSpan -Minutes 30) `
     -RepetitionDuration  ([TimeSpan]::MaxValue)
 
+# -StartWhenAvailable  : run if PC was off during a scheduled time
+# -RunOnlyIfNetworkAvailable : skip if no internet
+# -MultipleInstances IgnoreNew : don't stack runs
 $settings = New-ScheduledTaskSettingsSet `
-    -ExecutionTimeLimit      (New-TimeSpan -Minutes 3) `
-    -StartWhenAvailable                                  ` # run if PC was off during a scheduled time
-    -RunOnlyIfNetworkAvailable                           ` # skip if no internet
-    -MultipleInstances IgnoreNew                           # don't stack runs
+    -ExecutionTimeLimit (New-TimeSpan -Minutes 3) `
+    -StartWhenAvailable `
+    -RunOnlyIfNetworkAvailable `
+    -MultipleInstances IgnoreNew
 
 # ─── Register ──────────────────────────────────────────────────────────────────
 $existing = Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue

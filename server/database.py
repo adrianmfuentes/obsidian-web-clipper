@@ -6,9 +6,11 @@ The 'notes' table stores processed Markdown notes waiting to be
 pulled down by the local Obsidian client.
 """
 
+import contextlib
 import sqlite3
 import os
 from pathlib import Path
+from typing import Iterator
 
 # Data directory – bind-mounted as a Docker volume so notes survive restarts
 DATA_DIR = Path(os.getenv("DATA_DIR", "/app/data"))
@@ -17,12 +19,23 @@ DATA_DIR.mkdir(parents=True, exist_ok=True)
 DB_PATH = DATA_DIR / "queue.db"
 
 
-def get_connection() -> sqlite3.Connection:
-    """Return a thread-safe SQLite connection with row_factory set."""
+@contextlib.contextmanager
+def get_connection() -> Iterator[sqlite3.Connection]:
+    """
+    Yield a thread-safe SQLite connection with row_factory set.
+
+    A plain sqlite3.Connection used as `with conn:` only wraps the
+    transaction (commit/rollback) — it does NOT close the connection.
+    This contextmanager guarantees the connection is actually closed,
+    even on error, so callers can keep writing `with get_connection() as conn:`.
+    """
     conn = sqlite3.connect(str(DB_PATH), check_same_thread=False)
     conn.row_factory = sqlite3.Row          # rows accessible as dicts
     conn.execute("PRAGMA journal_mode=WAL") # safe for concurrent reads
-    return conn
+    try:
+        yield conn
+    finally:
+        conn.close()
 
 
 def init_db() -> None:
