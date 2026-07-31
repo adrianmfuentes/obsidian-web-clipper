@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Removes the Obsidian Clipper pull task from Windows Task Scheduler.
 

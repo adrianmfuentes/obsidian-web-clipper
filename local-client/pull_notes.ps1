@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Obsidian Web Clipper - Local Pull Client (PowerShell)
 

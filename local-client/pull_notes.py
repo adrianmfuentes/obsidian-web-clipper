@@ -61,9 +61,9 @@ except ImportError:
 # Edit these values OR set the matching environment variables.
 
 CONFIG = {
-    "server_url": "https://YOUR_ORACLE_SERVER",
-    "auth_token":  "CHANGE_ME_TO_A_LONG_RANDOM_STRING",
-    "inbox_path":  r"C:\Users\YOUR_USERNAME\Documents\ObsidianVault\Inbox",
+    "server_url": "https://clipper.amfserver.duckdns.org",
+    "auth_token":  "***REMOVED-LEAKED-TOKEN***",
+    "inbox_path":  r"D:\34644\Documents\Clipper\Inbox",
     "request_timeout": 30,
     # How long the server may hold a --watch request open waiting for a new
     # note before replying empty. Must stay comfortably under any reverse

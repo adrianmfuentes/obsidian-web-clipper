@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Registers the Obsidian Clipper pull task in Windows Task Scheduler.
 
@@ -48,7 +48,10 @@ $action = New-ScheduledTaskAction `
     -WorkingDirectory $PSScriptRoot
 
 # Trigger 1: at every log on (fires as soon as you turn on the PC and log in)
-$triggerLogon = New-ScheduledTaskTrigger -AtLogOn
+# Scoped to the current user only - an -AtLogOn trigger with no -User fires
+# at ANY user's logon (system-wide), which Register-ScheduledTask silently
+# requires admin rights for ("Access is denied" otherwise).
+$triggerLogon = New-ScheduledTaskTrigger -AtLogOn -User "$env:USERDOMAIN\$env:USERNAME"
 
 # Trigger 2: repeat every 30 minutes while the session is active
 # Uses a one-shot trigger in the past + RepetitionInterval to make it recurring
@@ -56,7 +59,7 @@ $triggerRepeat = New-ScheduledTaskTrigger `
     -Once `
     -At (Get-Date).Date `
     -RepetitionInterval  (New-TimeSpan -Minutes 30) `
-    -RepetitionDuration  ([TimeSpan]::MaxValue)
+    -RepetitionDuration  (New-TimeSpan -Days 3650)
 
 # -StartWhenAvailable  : run if PC was off during a scheduled time
 # -RunOnlyIfNetworkAvailable : skip if no internet
@@ -79,7 +82,6 @@ Register-ScheduledTask `
     -Action     $action `
     -Trigger    @($triggerLogon, $triggerRepeat) `
     -Settings   $settings `
-    -RunLevel   Highest `
     -Description "Pulls clipped web articles from Oracle server into Obsidian Inbox." `
     -Force | Out-Null
 
