@@ -8,7 +8,7 @@
       - Every 30 minutes while the PC is running
 
     Runs via pythonw.exe (the windowless twin of python.exe), so no console
-    window flashes into the foreground every 30 minutes — pull_notes.py logs
+    window flashes into the foreground every 30 minutes - pull_notes.py logs
     to pull_notes.log next to itself instead. Run once as Administrator.
     To remove the task, run unschedule_task.ps1.
 
@@ -16,7 +16,7 @@
     Run with: powershell -ExecutionPolicy Bypass -File schedule_task.ps1
 #>
 
-# ─── Config ────────────────────────────────────────────────────────────────────
+# --- Config --------------------------------------------------------------------
 $TaskName   = "Obsidian Clipper Pull"
 $ScriptPath = "$PSScriptRoot\pull_notes.py"
 
@@ -27,7 +27,7 @@ if (-not $PythonExe) {
     exit 1
 }
 
-# Prefer pythonw.exe (windowless) over python.exe — python.exe is a console
+# Prefer pythonw.exe (windowless) over python.exe -- python.exe is a console
 # app, so Task Scheduler would flash a terminal window into the foreground
 # on every trigger. pythonw.exe ships alongside python.exe in every standard
 # CPython install (same folder), so this should always resolve.
@@ -41,7 +41,7 @@ if (-not (Test-Path $PythonwExe)) {
 Write-Host "Using Python: $PythonwExe" -ForegroundColor Cyan
 Write-Host "Script path : $ScriptPath" -ForegroundColor Cyan
 
-# ─── Build task components ─────────────────────────────────────────────────────
+# --- Build task components -----------------------------------------------------
 $action = New-ScheduledTaskAction `
     -Execute  $PythonwExe `
     -Argument "`"$ScriptPath`"" `
@@ -70,10 +70,10 @@ $settings = New-ScheduledTaskSettingsSet `
     -RunOnlyIfNetworkAvailable `
     -MultipleInstances IgnoreNew
 
-# ─── Register ──────────────────────────────────────────────────────────────────
+# --- Register ------------------------------------------------------------------
 $existing = Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue
 if ($existing) {
-    Write-Host "Task already exists – updating it." -ForegroundColor Yellow
+    Write-Host "Task already exists - updating it." -ForegroundColor Yellow
     Unregister-ScheduledTask -TaskName $TaskName -Confirm:$false
 }
 
